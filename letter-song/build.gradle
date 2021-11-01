@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+}
+
+group 'org.springframework.boot'
+version '2.5.3'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation(project(":spring-boot-project:spring-boot-autoconfigure"))
+    implementation(project(":spring-boot-project:spring-boot"))
+    project(":spring-boot-project:spring-boot-starters:spring-boot-starter")
+    project(":spring-boot-project:spring-boot-starters:spring-boot-starter-web")
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+    compile("org.springframework:spring-webmvc:5.3.7")
+    implementation 'org.apache.tomcat.embed:tomcat-embed-core:9.0.53'
+
+}
+
+test {
+    useJUnitPlatform()
+}
