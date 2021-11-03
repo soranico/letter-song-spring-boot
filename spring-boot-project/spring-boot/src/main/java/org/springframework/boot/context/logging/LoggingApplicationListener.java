@@ -212,9 +212,15 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 		if (event instanceof ApplicationStartingEvent) {
 			onApplicationStartingEvent((ApplicationStartingEvent) event);
 		}
+		/**
+		 * 环境准备完成事件
+		 */
 		else if (event instanceof ApplicationEnvironmentPreparedEvent) {
 			onApplicationEnvironmentPreparedEvent((ApplicationEnvironmentPreparedEvent) event);
 		}
+		/**
+		 * 容器准备完成事件
+		 */
 		else if (event instanceof ApplicationPreparedEvent) {
 			onApplicationPreparedEvent((ApplicationPreparedEvent) event);
 		}
@@ -237,6 +243,10 @@ public class LoggingApplicationListener implements GenericApplicationListener {
 		if (this.loggingSystem == null) {
 			this.loggingSystem = LoggingSystem.get(springApplication.getClassLoader());
 		}
+		/**
+		 * 执行日志的初始化
+		 * @see LoggingApplicationListener#initialize(ConfigurableEnvironment, ClassLoader) 日志初始化
+		 */
 		initialize(event.getEnvironment(), springApplication.getClassLoader());
 	}
 

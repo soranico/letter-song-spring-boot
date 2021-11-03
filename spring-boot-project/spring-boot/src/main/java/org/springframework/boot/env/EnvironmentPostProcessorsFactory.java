@@ -48,6 +48,18 @@ public interface EnvironmentPostProcessorsFactory {
 	 * @return an {@link EnvironmentPostProcessorsFactory} instance
 	 */
 	static EnvironmentPostProcessorsFactory fromSpringFactories(ClassLoader classLoader) {
+		/**
+		 * 创建
+		 * @see ReflectionEnvironmentPostProcessorsFactory
+		 * 从spring.factories中加载配置，只是加载配置，没有进行初始化
+		 * @see org.springframework.boot.autoconfigure.integration.IntegrationPropertiesEnvironmentPostProcessor
+		 * @see org.springframework.boot.cloud.CloudFoundryVcapEnvironmentPostProcessor
+		 * @see org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor
+		 * @see org.springframework.boot.env.RandomValuePropertySourceEnvironmentPostProcessor
+		 * @see org.springframework.boot.env.SpringApplicationJsonEnvironmentPostProcessor
+		 * @see org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor
+		 * @see org.springframework.boot.reactor.DebugAgentEnvironmentPostProcessor
+		 */
 		return new ReflectionEnvironmentPostProcessorsFactory(classLoader,
 				SpringFactoriesLoader.loadFactoryNames(EnvironmentPostProcessor.class, classLoader));
 	}

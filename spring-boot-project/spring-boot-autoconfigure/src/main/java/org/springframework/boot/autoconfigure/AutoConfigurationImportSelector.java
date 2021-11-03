@@ -96,6 +96,9 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		if (!isEnabled(annotationMetadata)) {
 			return NO_IMPORTS;
 		}
+		/**
+		 *
+		 */
 		AutoConfigurationEntry autoConfigurationEntry = getAutoConfigurationEntry(annotationMetadata);
 		return StringUtils.toStringArray(autoConfigurationEntry.getConfigurations());
 	}
@@ -119,14 +122,33 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		if (!isEnabled(annotationMetadata)) {
 			return EMPTY_ENTRY;
 		}
+		/**
+		 * 获取注解信息
+		 * @see EnableAutoConfiguration
+		 */
 		AnnotationAttributes attributes = getAttributes(annotationMetadata);
+		/**
+		 * @see AutoConfigurationImportSelector#getCandidateConfigurations(AnnotationMetadata, AnnotationAttributes) 加载配置文件的值
+		 */
 		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
 		configurations = removeDuplicates(configurations);
+		/**
+		 * 获取需要排除自动装配的类
+		 */
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
 		checkExcludedClasses(configurations, exclusions);
 		configurations.removeAll(exclusions);
+		/**
+		 * @see AutoConfigurationImportSelector#getConfigurationClassFilter() 获取过滤器
+		 * 并进行自动装配的过滤
+		 * 这一步是预加载,通过javac的SPI技术实现的
+		 */
 		configurations = getConfigurationClassFilter().filter(configurations);
+		/**
+		 *
+		 */
 		fireAutoConfigurationImportEvents(configurations, exclusions);
+
 		return new AutoConfigurationEntry(configurations, exclusions);
 	}
 
@@ -175,6 +197,11 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	 * @return a list of candidate configurations
 	 */
 	protected List<String> getCandidateConfigurations(AnnotationMetadata metadata, AnnotationAttributes attributes) {
+		/**
+		 * 从META-INFO/spring.factories中加载
+		 * org.springframework.boot.autoconfigure.EnableAutoConfiguration =
+		 * 的值
+		 */
 		List<String> configurations = SpringFactoriesLoader.loadFactoryNames(getSpringFactoriesLoaderFactoryClass(),
 				getBeanClassLoader());
 		Assert.notEmpty(configurations, "No auto configuration classes found in META-INF/spring.factories. If you "
@@ -259,10 +286,25 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 
 	private ConfigurationClassFilter getConfigurationClassFilter() {
 		if (this.configurationClassFilter == null) {
+			/**
+			 * 从配置文件加载
+			 * @see AutoConfigurationImportFilter
+			 * 默认有三个处理条件的过滤器
+			 *
+			 * 处理类
+			 * @see org.springframework.boot.autoconfigure.condition.OnClassCondition
+			 *
+			 * 处理web环境
+			 * @see org.springframework.boot.autoconfigure.condition.OnWebApplicationCondition
+			 *
+			 * 处理bean
+			 * @see org.springframework.boot.autoconfigure.condition.OnBeanCondition
+			 */
 			List<AutoConfigurationImportFilter> filters = getAutoConfigurationImportFilters();
 			for (AutoConfigurationImportFilter filter : filters) {
 				invokeAwareMethods(filter);
 			}
+
 			this.configurationClassFilter = new ConfigurationClassFilter(this.beanClassLoader, filters);
 		}
 		return this.configurationClassFilter;
@@ -278,17 +320,27 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 	}
 
 	private void fireAutoConfigurationImportEvents(List<String> configurations, Set<String> exclusions) {
+		/**
+		 * 获取监听器
+		 * @see org.springframework.boot.autoconfigure.condition.ConditionEvaluationReportAutoConfigurationImportListener
+		 */
 		List<AutoConfigurationImportListener> listeners = getAutoConfigurationImportListeners();
 		if (!listeners.isEmpty()) {
 			AutoConfigurationImportEvent event = new AutoConfigurationImportEvent(this, configurations, exclusions);
 			for (AutoConfigurationImportListener listener : listeners) {
 				invokeAwareMethods(listener);
+				/**
+				 * @see org.springframework.boot.autoconfigure.condition.ConditionEvaluationReportAutoConfigurationImportListener#onAutoConfigurationImportEvent(AutoConfigurationImportEvent)
+				 */
 				listener.onAutoConfigurationImportEvent(event);
 			}
 		}
 	}
 
 	protected List<AutoConfigurationImportListener> getAutoConfigurationImportListeners() {
+		/**
+		 * @see org.springframework.boot.autoconfigure.condition.ConditionEvaluationReportAutoConfigurationImportListener
+		 */
 		return SpringFactoriesLoader.loadFactories(AutoConfigurationImportListener.class, this.beanClassLoader);
 	}
 
@@ -358,7 +410,26 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		private final List<AutoConfigurationImportFilter> filters;
 
 		ConfigurationClassFilter(ClassLoader classLoader, List<AutoConfigurationImportFilter> filters) {
+			/**
+			 * 加载
+			 * @see AutoConfigurationMetadataLoader#loadMetadata(ClassLoader)
+			 * 返回的是
+			 * @see org.springframework.boot.autoconfigure.AutoConfigurationMetadataLoader.PropertiesAutoConfigurationMetadata
+			 * 读取的是 META-INF/spring-autoconfigure-metadata.properties
+			 * 这个文件的生成是利用javac 的编译SPI技术生成的
+			 */
 			this.autoConfigurationMetadata = AutoConfigurationMetadataLoader.loadMetadata(classLoader);
+			/**
+			 * 默认有3个
+			 * 处理类
+			 * @see org.springframework.boot.autoconfigure.condition.OnClassCondition
+			 *
+			 * 处理web环境
+			 * @see org.springframework.boot.autoconfigure.condition.OnWebApplicationCondition
+			 *
+			 * 处理bean
+			 * @see org.springframework.boot.autoconfigure.condition.OnBeanCondition
+			 */
 			this.filters = filters;
 		}
 
@@ -366,9 +437,23 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 			long startTime = System.nanoTime();
 			String[] candidates = StringUtils.toStringArray(configurations);
 			boolean skipped = false;
+			/**
+			 * 进行当前环境类级别匹配
+			 * @see org.springframework.boot.autoconfigure.condition.OnClassCondition#match(String[], AutoConfigurationMetadata)
+			 *
+			 * 进行当前容器环境匹配
+			 * @see org.springframework.boot.autoconfigure.condition.OnWebApplicationCondition#match(String[], AutoConfigurationMetadata)
+			 *
+			 * 进行当前环境已经存在的bean匹配
+			 * @see org.springframework.boot.autoconfigure.condition.OnBeanCondition#match(String[], AutoConfigurationMetadata)
+			 *
+			 */
 			for (AutoConfigurationImportFilter filter : this.filters) {
 				boolean[] match = filter.match(candidates, this.autoConfigurationMetadata);
 				for (int i = 0; i < match.length; i++) {
+					/**
+					 * 匹配失败则排除加载
+					 */
 					if (!match[i]) {
 						candidates[i] = null;
 						skipped = true;
@@ -430,6 +515,10 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 					() -> String.format("Only %s implementations are supported, got %s",
 							AutoConfigurationImportSelector.class.getSimpleName(),
 							deferredImportSelector.getClass().getName()));
+			/**
+			 * 获取自动装配的类
+			 * @see AutoConfigurationImportSelector#getAutoConfigurationEntry(AnnotationMetadata)
+			 */
 			AutoConfigurationEntry autoConfigurationEntry = ((AutoConfigurationImportSelector) deferredImportSelector)
 					.getAutoConfigurationEntry(annotationMetadata);
 			this.autoConfigurationEntries.add(autoConfigurationEntry);
@@ -449,7 +538,9 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 					.map(AutoConfigurationEntry::getConfigurations).flatMap(Collection::stream)
 					.collect(Collectors.toCollection(LinkedHashSet::new));
 			processedConfigurations.removeAll(allExclusions);
-
+			/**
+			 * 返回的是排除需要过滤类之后的数据
+			 */
 			return sortAutoConfigurations(processedConfigurations, getAutoConfigurationMetadata()).stream()
 					.map((importClassName) -> new Entry(this.entries.get(importClassName), importClassName))
 					.collect(Collectors.toList());

@@ -53,13 +53,25 @@ public class DelegatingApplicationListener implements ApplicationListener<Applic
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
+		/**
+		 *
+		 */
 		if (event instanceof ApplicationEnvironmentPreparedEvent) {
+			/**
+			 * 读取配置文件中 context.listener.classes
+			 * 配置的类并初始化,调用监听方法
+			 */
 			List<ApplicationListener<ApplicationEvent>> delegates = getListeners(
 					((ApplicationEnvironmentPreparedEvent) event).getEnvironment());
 			if (delegates.isEmpty()) {
 				return;
 			}
 			this.multicaster = new SimpleApplicationEventMulticaster();
+			/**
+			 * 添加监听
+			 * 这个不会添加到容器全局的
+			 * @see org.springframework.boot.context.event.EventPublishingRunListener#initialMulticaster
+			 */
 			for (ApplicationListener<ApplicationEvent> listener : delegates) {
 				this.multicaster.addApplicationListener(listener);
 			}

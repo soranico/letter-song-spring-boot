@@ -83,6 +83,10 @@ public class ConditionEvaluationReportLoggingListener
 		applicationContext.addApplicationListener(new ConditionEvaluationReportListener());
 		if (applicationContext instanceof GenericApplicationContext) {
 			// Get the report early in case the context fails to load
+			/**
+			 * 直接注册 单例
+			 * @see ConditionEvaluationReport
+			 */
 			this.report = ConditionEvaluationReport.get(this.applicationContext.getBeanFactory());
 		}
 	}

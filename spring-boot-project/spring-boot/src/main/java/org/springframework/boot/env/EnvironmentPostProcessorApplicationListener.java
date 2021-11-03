@@ -24,6 +24,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
 import org.springframework.boot.context.event.ApplicationFailedEvent;
 import org.springframework.boot.context.event.ApplicationPreparedEvent;
+import org.springframework.boot.logging.DeferredLogFactory;
 import org.springframework.boot.logging.DeferredLogs;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.event.SmartApplicationListener;
@@ -83,9 +84,15 @@ public class EnvironmentPostProcessorApplicationListener implements SmartApplica
 
 	@Override
 	public void onApplicationEvent(ApplicationEvent event) {
+		/**
+		 * 环境准备完成事件
+		 */
 		if (event instanceof ApplicationEnvironmentPreparedEvent) {
 			onApplicationEnvironmentPreparedEvent((ApplicationEnvironmentPreparedEvent) event);
 		}
+		/**
+		 * 容器准备完成事件
+		 */
 		if (event instanceof ApplicationPreparedEvent) {
 			onApplicationPreparedEvent();
 		}
@@ -99,6 +106,23 @@ public class EnvironmentPostProcessorApplicationListener implements SmartApplica
 		SpringApplication application = event.getSpringApplication();
 		for (EnvironmentPostProcessor postProcessor : getEnvironmentPostProcessors(application.getResourceLoader(),
 				event.getBootstrapContext())) {
+			/**
+			 *
+			 * @see org.springframework.boot.autoconfigure.integration.IntegrationPropertiesEnvironmentPostProcessor#postProcessEnvironment(ConfigurableEnvironment, SpringApplication)
+			 *
+			 * @see org.springframework.boot.cloud.CloudFoundryVcapEnvironmentPostProcessor#postProcessEnvironment(ConfigurableEnvironment, SpringApplication)
+			 *
+			 *
+			 * @see org.springframework.boot.context.config.ConfigDataEnvironmentPostProcessor#postProcessEnvironment(ConfigurableEnvironment, SpringApplication)
+			 *
+			 * @see org.springframework.boot.env.RandomValuePropertySourceEnvironmentPostProcessor
+			 *
+			 * @see org.springframework.boot.env.SpringApplicationJsonEnvironmentPostProcessor#postProcessEnvironment(ConfigurableEnvironment, SpringApplication)
+			 *
+			 * @see org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor
+			 *
+			 * @see org.springframework.boot.reactor.DebugAgentEnvironmentPostProcessor
+			 */
 			postProcessor.postProcessEnvironment(environment, application);
 		}
 	}
@@ -118,7 +142,17 @@ public class EnvironmentPostProcessorApplicationListener implements SmartApplica
 	List<EnvironmentPostProcessor> getEnvironmentPostProcessors(ResourceLoader resourceLoader,
 			ConfigurableBootstrapContext bootstrapContext) {
 		ClassLoader classLoader = (resourceLoader != null) ? resourceLoader.getClassLoader() : null;
+		/**
+		 * 执行的是这个方法
+		 * @see EnvironmentPostProcessorsFactory#fromSpringFactories(java.lang.ClassLoader)
+		 *
+		 */
 		EnvironmentPostProcessorsFactory postProcessorsFactory = this.postProcessorsFactory.apply(classLoader);
+		/**
+		 * 执行这个方法,加载创建环境允许的类
+		 * @see ReflectionEnvironmentPostProcessorsFactory#getEnvironmentPostProcessors(DeferredLogFactory, ConfigurableBootstrapContext)
+		 * 创建为对象后返回
+		 */
 		return postProcessorsFactory.getEnvironmentPostProcessors(this.deferredLogs, bootstrapContext);
 	}
 

@@ -26,12 +26,14 @@ import org.springframework.boot.availability.AvailabilityChangeEvent;
 import org.springframework.boot.availability.LivenessState;
 import org.springframework.boot.availability.ReadinessState;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.event.ApplicationEventMulticaster;
 import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.Ordered;
+import org.springframework.core.ResolvableType;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.util.ErrorHandler;
 
@@ -72,6 +74,9 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 
 	@Override
 	public void starting(ConfigurableBootstrapContext bootstrapContext) {
+		/**
+		 * @see SimpleApplicationEventMulticaster#multicastEvent(ApplicationEvent)
+		 */
 		this.initialMulticaster
 				.multicastEvent(new ApplicationStartingEvent(bootstrapContext, this.application, this.args));
 	}
@@ -85,6 +90,15 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 
 	@Override
 	public void contextPrepared(ConfigurableApplicationContext context) {
+		/**
+		 * 事件
+		 * @see ApplicationContextInitializedEvent
+		 *
+		 * @see org.springframework.boot.autoconfigure.BackgroundPreinitializer#onApplicationEvent(SpringApplicationEvent)
+		 *
+		 * @see BackgroundPreinitalializer
+		 * @see org.springframework.boot.context.config.DelegatingApplicationListener
+		 */
 		this.initialMulticaster
 				.multicastEvent(new ApplicationContextInitializedEvent(this.application, this.args, context));
 	}
@@ -92,11 +106,27 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 	@Override
 	public void contextLoaded(ConfigurableApplicationContext context) {
 		for (ApplicationListener<?> listener : this.application.getListeners()) {
+			/**
+			 * 设置回调接口的参数
+			 */
 			if (listener instanceof ApplicationContextAware) {
 				((ApplicationContextAware) listener).setApplicationContext(context);
 			}
 			context.addApplicationListener(listener);
 		}
+		/**
+		 * @see SimpleApplicationEventMulticaster#multicastEvent(ApplicationEvent)
+		 * 
+		 * @see org.springframework.boot.env.EnvironmentPostProcessorApplicationListener#onApplicationEvent(ApplicationEvent)
+		 *
+		 * @see org.springframework.boot.context.logging.LoggingApplicationListener#onApplicationEvent(ApplicationEvent)
+		 *
+		 * @see org.springframework.boot.autoconfigure.BackgroundPreinitializer#onApplicationEvent(SpringApplicationEvent)
+		 *
+		 * 这个会调用配置文件里面的监听
+		 * context.listener.classes
+		 * @see org.springframework.boot.context.config.DelegatingApplicationListener#onApplicationEvent(ApplicationEvent)
+		 */
 		this.initialMulticaster.multicastEvent(new ApplicationPreparedEvent(this.application, this.args, context));
 	}
 

@@ -50,6 +50,11 @@ class OnClassCondition extends FilteringSpringBootCondition {
 		// processor is available. Using a single additional thread seems to offer the
 		// best performance. More threads make things worse.
 		if (autoConfigurationClasses.length > 1 && Runtime.getRuntime().availableProcessors() > 1) {
+			/**
+			 * 二分处理
+			 * 开启新线程处理一半,最终调用的还是
+			 * @see StandardOutcomesResolver#resolveOutcomes()
+			 */
 			return resolveOutcomesThreaded(autoConfigurationClasses, autoConfigurationMetadata);
 		}
 		else {
@@ -92,6 +97,10 @@ class OnClassCondition extends FilteringSpringBootCondition {
 		ConditionMessage matchMessage = ConditionMessage.empty();
 		List<String> onClasses = getCandidates(metadata, ConditionalOnClass.class);
 		if (onClasses != null) {
+			/**
+			 * 加载指定的类，如果可以全部加载成功
+			 * 那么就会匹配成功
+			 */
 			List<String> missing = filter(onClasses, ClassNameFilter.MISSING, classLoader);
 			if (!missing.isEmpty()) {
 				return ConditionOutcome.noMatch(ConditionMessage.forCondition(ConditionalOnClass.class)
@@ -103,6 +112,10 @@ class OnClassCondition extends FilteringSpringBootCondition {
 		}
 		List<String> onMissingClasses = getCandidates(metadata, ConditionalOnMissingClass.class);
 		if (onMissingClasses != null) {
+			/**
+			 * 加载指定的类如果全部加载不到
+			 * 那么就是成功
+			 */
 			List<String> present = filter(onMissingClasses, ClassNameFilter.PRESENT, classLoader);
 			if (!present.isEmpty()) {
 				return ConditionOutcome.noMatch(ConditionMessage.forCondition(ConditionalOnMissingClass.class)
@@ -194,9 +207,24 @@ class OnClassCondition extends FilteringSpringBootCondition {
 				AutoConfigurationMetadata autoConfigurationMetadata) {
 			ConditionOutcome[] outcomes = new ConditionOutcome[end - start];
 			for (int i = start; i < end; i++) {
+				/**
+				 * 当前的类全路径
+				 */
 				String autoConfigurationClass = autoConfigurationClasses[i];
 				if (autoConfigurationClass != null) {
+					/**
+					 * 就是 类名.ConditionalOnClass在
+					 * META-INF/spring-autoconfigure-metadata.properties
+					 * 中查找配置项
+					 * @see org.springframework.boot.autoconfigure.AutoConfigurationMetadataLoader.PropertiesAutoConfigurationMetadata#get(String, String)
+					 */
 					String candidates = autoConfigurationMetadata.get(autoConfigurationClass, "ConditionalOnClass");
+					/**
+					 * 找到了配置项
+					 * 那么需要判断当前环境是不是满足
+					 * @see StandardOutcomesResolver#getOutcome(java.lang.String)
+					 * 匹配为null
+					 */
 					if (candidates != null) {
 						outcomes[i - start] = getOutcome(candidates);
 					}
@@ -211,6 +239,11 @@ class OnClassCondition extends FilteringSpringBootCondition {
 					return getOutcome(candidates, this.beanClassLoader);
 				}
 				for (String candidate : StringUtils.commaDelimitedListToStringArray(candidates)) {
+					/**
+					 * 判断是否条件全部满足
+					 * @see StandardOutcomesResolver#getOutcome(String, ClassLoader)
+					 * 匹配为 null
+					 */
 					ConditionOutcome outcome = getOutcome(candidate, this.beanClassLoader);
 					if (outcome != null) {
 						return outcome;
@@ -224,6 +257,10 @@ class OnClassCondition extends FilteringSpringBootCondition {
 		}
 
 		private ConditionOutcome getOutcome(String className, ClassLoader classLoader) {
+			/**
+			 * 判断类是否存在
+			 * 不存在则不匹配
+			 */
 			if (ClassNameFilter.MISSING.matches(className, classLoader)) {
 				return ConditionOutcome.noMatch(ConditionMessage.forCondition(ConditionalOnClass.class)
 						.didNotFind("required class").items(Style.QUOTE, className));

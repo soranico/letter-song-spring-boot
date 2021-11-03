@@ -175,6 +175,9 @@ public class AutoConfigureAnnotationProcessor extends AbstractProcessor {
 	}
 
 	private void writeProperties() throws IOException {
+		/**
+		 * 编译器写出文件
+		 */
 		if (!this.properties.isEmpty()) {
 			Filer filer = this.processingEnv.getFiler();
 			FileObject file = filer.createResource(StandardLocation.CLASS_OUTPUT, "", PROPERTIES_PATH);

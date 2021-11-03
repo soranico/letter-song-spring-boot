@@ -51,7 +51,16 @@ class OnPropertyCondition extends SpringBootCondition {
 				metadata.getAllAnnotationAttributes(ConditionalOnProperty.class.getName()));
 		List<ConditionMessage> noMatch = new ArrayList<>();
 		List<ConditionMessage> match = new ArrayList<>();
+		/**
+		 * 判断是否满足
+		 * @see ConditionalOnProperty
+		 */
 		for (AnnotationAttributes annotationAttributes : allAnnotationAttributes) {
+			/**
+			 * 每个里面封装了
+			 * @see ConditionalOnProperty
+			 * 里面所有属性配置的值
+			 */
 			ConditionOutcome outcome = determineOutcome(annotationAttributes, context.getEnvironment());
 			(outcome.isMatch() ? match : noMatch).add(outcome.getConditionMessage());
 		}
@@ -88,6 +97,10 @@ class OnPropertyCondition extends SpringBootCondition {
 		Spec spec = new Spec(annotationAttributes);
 		List<String> missingProperties = new ArrayList<>();
 		List<String> nonMatchingProperties = new ArrayList<>();
+		/**
+		 * 解析属性值是否满足
+		 * @see Spec#collectProperties(PropertyResolver, List, List)
+		 */
 		spec.collectProperties(resolver, missingProperties, nonMatchingProperties);
 		if (!missingProperties.isEmpty()) {
 			return ConditionOutcome.noMatch(ConditionMessage.forCondition(ConditionalOnProperty.class, spec)
@@ -119,6 +132,10 @@ class OnPropertyCondition extends SpringBootCondition {
 			}
 			this.prefix = prefix;
 			this.havingValue = annotationAttributes.getString("havingValue");
+			/**
+			 * @see ConditionalOnProperty#name()
+			 * @see ConditionalOnProperty#value()
+			 */
 			this.names = getNames(annotationAttributes);
 			this.matchIfMissing = annotationAttributes.getBoolean("matchIfMissing");
 		}
@@ -134,14 +151,34 @@ class OnPropertyCondition extends SpringBootCondition {
 		}
 
 		private void collectProperties(PropertyResolver resolver, List<String> missing, List<String> nonMatching) {
+			/**
+			 * 所有属性值
+			 */
 			for (String name : this.names) {
+				/**
+				 * 前缀.属性
+				 * 没有前缀则就是属性
+				 */
 				String key = this.prefix + name;
+				/**
+				 * 判断是否包含这个配置项
+				 * @see org.springframework.boot.ApplicationServletEnvironment#containsProperty(String)
+				 */
 				if (resolver.containsProperty(key)) {
+					/**
+					 * 如果配置项存在但值不同
+					 * 那么也是匹配失败
+					 * 如果没有指定值,那么只要配置的值不是false也算匹配成功
+					 */
 					if (!isMatch(resolver.getProperty(key), this.havingValue)) {
 						nonMatching.add(name);
 					}
 				}
 				else {
+					/**
+					 * 如果配置不存在也匹配
+					 * 那么加入缺失集合
+					 */
 					if (!this.matchIfMissing) {
 						missing.add(name);
 					}

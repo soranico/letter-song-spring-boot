@@ -55,6 +55,9 @@ class OnWebApplicationCondition extends FilteringSpringBootCondition {
 		for (int i = 0; i < outcomes.length; i++) {
 			String autoConfigurationClass = autoConfigurationClasses[i];
 			if (autoConfigurationClass != null) {
+				/**
+				 * @see OnWebApplicationCondition#getOutcome(java.lang.String)
+				 */
 				outcomes[i] = getOutcome(
 						autoConfigurationMetadata.get(autoConfigurationClass, "ConditionalOnWebApplication"));
 			}
@@ -63,11 +66,22 @@ class OnWebApplicationCondition extends FilteringSpringBootCondition {
 	}
 
 	private ConditionOutcome getOutcome(String type) {
+		/**
+		 * 不存在条件那么也是匹配成功的
+		 */
 		if (type == null) {
 			return null;
 		}
+		/**
+		 * 根据配置加载不同环境所需要的类
+		 *
+		 */
 		ConditionMessage.Builder message = ConditionMessage.forCondition(ConditionalOnWebApplication.class);
 		if (ConditionalOnWebApplication.Type.SERVLET.name().equals(type)) {
+			/**
+			 * servlet环境
+			 * @see org.springframework.web.context.support.GenericWebApplicationContext
+			 */
 			if (!ClassNameFilter.isPresent(SERVLET_WEB_APPLICATION_CLASS, getBeanClassLoader())) {
 				return ConditionOutcome.noMatch(message.didNotFind("servlet web application classes").atAll());
 			}

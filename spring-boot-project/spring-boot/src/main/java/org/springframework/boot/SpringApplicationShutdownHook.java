@@ -81,6 +81,10 @@ class SpringApplicationShutdownHook implements Runnable {
 	void registerApplicationContext(ConfigurableApplicationContext context) {
 		synchronized (SpringApplicationShutdownHook.class) {
 			assertNotInProgress();
+			/**
+			 * 添加监听器
+			 * @see ApplicationContextClosedListener
+			 */
 			context.addApplicationListener(this.contextCloseListener);
 			this.contexts.add(context);
 		}

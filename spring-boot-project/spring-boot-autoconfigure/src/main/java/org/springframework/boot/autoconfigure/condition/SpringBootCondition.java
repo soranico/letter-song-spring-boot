@@ -19,6 +19,7 @@ package org.springframework.boot.autoconfigure.condition;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.boot.autoconfigure.AutoConfigurationMetadata;
 import org.springframework.context.annotation.Condition;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.core.type.AnnotatedTypeMetadata;
@@ -42,8 +43,28 @@ public abstract class SpringBootCondition implements Condition {
 
 	@Override
 	public final boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+		/**
+		 * 当前解析类的全路径
+		 * 或
+		 * 当前方法定义的全路径 类名#方法名
+		 */
 		String classOrMethodName = getClassOrMethodName(metadata);
 		try {
+			/**
+			 * 类型和注解会从容器中取出对应的beanName来判断
+			 * 也就是这个注解只会看bean
+			 * @see OnBeanCondition#getMatchOutcome(ConditionContext, AnnotatedTypeMetadata) bean环境匹配
+			 *
+			 * 只是进行简单的类加载
+			 * @see OnClassCondition#getMatchOutcome(ConditionContext, AnnotatedTypeMetadata) 类环境匹配
+			 *
+			 * 判断当前容器环境是否满足
+			 * @see OnWebApplicationCondition#getMatchOutcome(ConditionContext, AnnotatedTypeMetadata) 容器环境匹配
+			 *
+			 * 判断当前配置的配置项是否存在或者允许缺失匹配，如果没有指定默认值,只要配置项值不为false也算匹配成功
+			 * @see OnPropertyCondition#getMatchOutcome(ConditionContext, AnnotatedTypeMetadata) 配置项匹配
+			 *
+			 */
 			ConditionOutcome outcome = getMatchOutcome(context, metadata);
 			logOutcome(classOrMethodName, outcome);
 			recordEvaluation(context, classOrMethodName, outcome);

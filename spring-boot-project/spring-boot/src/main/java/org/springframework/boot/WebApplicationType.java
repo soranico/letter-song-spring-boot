@@ -68,6 +68,11 @@ public enum WebApplicationType {
 				return WebApplicationType.NONE;
 			}
 		}
+		/**
+		 * web环境
+		 * ConfigurableWebApplicationContext
+		 * javax.servlet.Servlet
+		 */
 		return WebApplicationType.SERVLET;
 	}
 

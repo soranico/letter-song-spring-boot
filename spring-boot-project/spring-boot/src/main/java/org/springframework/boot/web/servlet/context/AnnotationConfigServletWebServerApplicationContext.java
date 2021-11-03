@@ -29,6 +29,7 @@ import org.springframework.context.annotation.AnnotationConfigUtils;
 import org.springframework.context.annotation.AnnotationScopeMetadataResolver;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.context.annotation.ScopeMetadataResolver;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
@@ -191,12 +192,22 @@ public class AnnotationConfigServletWebServerApplicationContext extends ServletW
 
 	@Override
 	protected void prepareRefresh() {
+		/**
+		 * TODO 清除缓存
+		 */
 		this.scanner.clearCache();
+		/**
+		 * @see AbstractApplicationContext#prepareRefresh()
+		 */
 		super.prepareRefresh();
 	}
 
 	@Override
 	protected void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+		/**
+		 * 注册了后置处理器,scope 和 处理request ,response等依赖注入的代理
+		 * @see ServletWebServerApplicationContext#postProcessBeanFactory(ConfigurableListableBeanFactory)
+		 */
 		super.postProcessBeanFactory(beanFactory);
 		if (this.basePackages != null && this.basePackages.length > 0) {
 			this.scanner.scan(this.basePackages);

@@ -77,6 +77,15 @@ public class BackgroundPreinitializer implements ApplicationListener<SpringAppli
 		if (!ENABLED) {
 			return;
 		}
+		/**
+		 * 启用后台线程
+		 * 进行一些类的初始化
+		 * @see ConversionServiceInitializer
+		 * @see ValidationInitializer
+		 * @see MessageConverterInitializer
+		 * @see JacksonInitializer
+		 * @see CharsetInitializer
+		 */
 		if (event instanceof ApplicationEnvironmentPreparedEvent
 				&& preinitializationStarted.compareAndSet(false, true)) {
 			performPreinitialization();

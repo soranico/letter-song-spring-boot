@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import javax.servlet.Filter;
 import javax.servlet.Servlet;
@@ -36,6 +37,7 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.Scope;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.boot.availability.AvailabilityChangeEvent;
 import org.springframework.boot.availability.ReadinessState;
@@ -49,8 +51,12 @@ import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextException;
+import org.springframework.context.annotation.ConfigurationCondition;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.core.metrics.StartupStep;
+import org.springframework.core.type.AnnotatedTypeMetadata;
+import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.ContextLoaderListener;
 import org.springframework.web.context.ServletContextAware;
@@ -134,14 +140,73 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 	 */
 	@Override
 	protected void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) {
+		/**
+		 * 添加后置处理器
+		 * @see WebApplicationContextServletContextAwareProcessor
+		 * 传入的参数为当前容器
+		 * 处理的是 从当前容器中获取
+		 * @see WebApplicationContextServletContextAwareProcessor#getServletContext()
+		 * @see ServletContextAware
+		 *
+		 * @see WebApplicationContextServletContextAwareProcessor#getServletConfig()
+		 * @see org.springframework.web.context.ServletConfigAware
+		 */
 		beanFactory.addBeanPostProcessor(new WebApplicationContextServletContextAwareProcessor(this));
+		/**
+		 * 忽略注入
+		 * @see ServletContextAware
+		 */
 		beanFactory.ignoreDependencyInterface(ServletContextAware.class);
+		/**
+		 * 注册Scope
+		 * 以及
+		 * 处理注入Servlet相关参数的处理类
+		 * 具体值则是从线程上下文获取的
+		 */
 		registerWebApplicationScopes();
 	}
 
 	@Override
 	public final void refresh() throws BeansException, IllegalStateException {
 		try {
+			/**
+			 * 调用父类的即spring的刷新步骤
+			 * @see AbstractApplicationContext#refresh()
+			 *
+			 * 重写添加了清除缓存的逻辑
+			 * @see AnnotationConfigServletWebServerApplicationContext#prepareRefresh()
+			 *
+			 * 添加了支持Servlet环境的Scope 以及Request等依赖注入的支持
+			 * @see AnnotationConfigServletWebServerApplicationContext#postProcessBeanFactory(ConfigurableListableBeanFactory)
+			 *
+			 * 解析配置类最终扫描执行这个
+			 * 1.
+			 * @see org.springframework.boot.autoconfigure.AutoConfigurationPackages.Registrar#registerBeanDefinitions(AnnotationMetadata, BeanDefinitionRegistry) 
+			 * 这个是从执行进来的
+			 * @see ConfigurationClassBeanDefinitionReader#loadBeanDefinitionsForConfigurationClass(ConfigurationClass, ConfigurationClassBeanDefinitionReader.TrackedConditionEvaluator) 
+			 * @see ConfigurationClassBeanDefinitionReader#loadBeanDefinitionsFromRegistrars(java.util.Map)
+			 * 完成注册一个BD
+			 * @see org.springframework.boot.autoconfigure.AutoConfigurationPackages.BasePackagesBeanDefinition
+			 *
+			 * 2. 自动装配
+			 * @see org.springframework.boot.autoconfigure.AutoConfigurationImportSelector
+			 * 因为继承了
+			 * @see org.springframework.context.annotation.DeferredImportSelector
+			 * 所以会在扫描完其他配置类后再处理
+			 * 这也是为什么注册一些bean可以替换默认配置bean的原因
+			 * @see org.springframework.context.annotation.ConfigurationClassParser.DeferredImportSelectorGroupingHandler#processGroupImports()
+			 * 调用分组的方法先获取需要自动状态的类名以及判断条件
+			 * @see org.springframework.boot.autoconfigure.AutoConfigurationImportSelector.AutoConfigurationGroup#process(org.springframework.core.type.AnnotationMetadata, org.springframework.context.annotation.DeferredImportSelector)
+			 * 遍历每个配置项,按照处理 Import 类处理
+			 * @see org.springframework.context.annotation.ConfigurationClassParser#processConfigurationClass(org.springframework.context.annotation.ConfigurationClass, java.util.function.Predicate)
+			 * 最后会按照 Import 的类型进行处理
+			 * 最普通的类
+			 * @see ConfigurationClassParser#processConfigurationClass(org.springframework.context.annotation.ConfigurationClass, java.util.function.Predicate)
+			 * 首先调用条件判断进行
+			 * @see org.springframework.context.annotation.ConditionEvaluator#shouldSkip(AnnotatedTypeMetadata, ConfigurationCondition.ConfigurationPhase)
+			 * 一般会调用进行集体的条件判断
+			 * @see org.springframework.boot.autoconfigure.condition.SpringBootCondition#matches(org.springframework.context.annotation.ConditionContext, org.springframework.core.type.AnnotatedTypeMetadata)
+			 */
 			super.refresh();
 		}
 		catch (RuntimeException ex) {
@@ -245,6 +310,19 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 
 	private void registerWebApplicationScopes() {
 		ExistingWebApplicationScopes existingScopes = new ExistingWebApplicationScopes(getBeanFactory());
+		/**
+		 * @see WebApplicationContextUtils#registerWebApplicationScopes(ConfigurableListableBeanFactory, ServletContext)
+		 * 注册scope
+		 * @see org.springframework.web.context.request.RequestScope
+		 * @see org.springframework.web.context.request.SessionScope
+		 * @see ServletContextScope
+		 *
+		 * 注册servlet 依赖注入的处理
+		 * @see org.springframework.web.context.support.WebApplicationContextUtils.RequestObjectFactory 处理Request从线程上下文获取
+		 * @see org.springframework.web.context.support.WebApplicationContextUtils.ResponseObjectFactory
+		 * @see org.springframework.web.context.support.WebApplicationContextUtils.SessionObjectFactory
+		 * @see org.springframework.web.context.support.WebApplicationContextUtils.WebRequestObjectFactory
+		 */
 		WebApplicationContextUtils.registerWebApplicationScopes(getBeanFactory());
 		existingScopes.restore();
 	}

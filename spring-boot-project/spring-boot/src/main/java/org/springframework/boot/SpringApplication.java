@@ -263,6 +263,9 @@ public class SpringApplication {
 	 * @see #setSources(Set)
 	 */
 	public SpringApplication(Class<?>... primarySources) {
+		/**
+		 * @see SpringApplication#SpringApplication(ResourceLoader, Class[])
+		 */
 		this(null, primarySources);
 	}
 
@@ -281,19 +284,64 @@ public class SpringApplication {
 		this.resourceLoader = resourceLoader;
 		Assert.notNull(primarySources, "PrimarySources must not be null");
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
+		/**
+		 * 推断环境
+		 */
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
+		/**
+		 * 加载spring.factories配置
+		 * @see SpringApplication#getBootstrapRegistryInitializersFromSpringFactories() 加载配置
+		 * 加载,默认没有
+		 * @see Bootstrapper
+		 * @see BootstrapRegistry
+		 */
 		this.bootstrapRegistryInitializers = getBootstrapRegistryInitializersFromSpringFactories();
+		/**
+		 * 获取
+		 * @see org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer
+		 * @see org.springframework.boot.context.config.DelegatingApplicationContextInitializer
+		 * @see org.springframework.boot.context.ContextIdApplicationContextInitializer
+		 * @see org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener
+		 * @see org.springframework.boot.context.ConfigurationWarningsApplicationContextInitializer
+		 * @see org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer
+		 * @see org.springframework.boot.web.context.ServerPortInfoApplicationContextInitializer
+		 */
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
+		/**
+		 *
+		 * @see org.springframework.boot.env.EnvironmentPostProcessorApplicationListener
+		 * @see org.springframework.boot.context.config.AnsiOutputApplicationListener
+		 * @see org.springframework.boot.context.logging.LoggingApplicationListener
+		 * @see org.springframework.boot.autoconfigure.BackgroundPreinitializer
+		 * @see org.springframework.boot.context.config.DelegatingApplicationListener
+		 * @see org.springframework.boot.builder.ParentContextCloserApplicationListener
+		 * @see ClearCachesApplicationListener
+		 * @see org.springframework.boot.context.FileEncodingApplicationListener
+		 */
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
+		/**
+		 * 手动获取运行时异常找到当前main()所在的类
+		 */
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
 	@SuppressWarnings("deprecation")
 	private List<BootstrapRegistryInitializer> getBootstrapRegistryInitializersFromSpringFactories() {
 		ArrayList<BootstrapRegistryInitializer> initializers = new ArrayList<>();
+		/**
+		 * 从 spring.factories 中加载
+		 * Bootstrapper的实例并执行
+		 * @see Bootstrapper#initialize(BootstrapRegistry)
+		 * 默认没有
+		 */
 		getSpringFactoriesInstances(Bootstrapper.class).stream()
 				.map((bootstrapper) -> ((BootstrapRegistryInitializer) bootstrapper::initialize))
 				.forEach(initializers::add);
+		/**
+		 * 加载
+		 * @see BootstrapRegistryInitializer
+		 * 默认没有
+		 */
 		initializers.addAll(getSpringFactoriesInstances(BootstrapRegistryInitializer.class));
 		return initializers;
 	}
@@ -322,19 +370,45 @@ public class SpringApplication {
 	public ConfigurableApplicationContext run(String... args) {
 		StopWatch stopWatch = new StopWatch();
 		stopWatch.start();
+		/**
+		 *
+		 */
 		DefaultBootstrapContext bootstrapContext = createBootstrapContext();
 		ConfigurableApplicationContext context = null;
 		configureHeadlessProperty();
+		/**
+		 * 使用的构造器,第一个参数为当前 SpringApplication 对象
+		 * @see org.springframework.boot.context.event.EventPublishingRunListener#EventPublishingRunListener(SpringApplication, String[])
+		 * 最后将 EventPublishingRunListener 实例传入
+		 * 另一个参数为
+		 * @see SpringApplication#applicationStartup
+		 * @see SpringApplicationRunListeners
+		 */
 		SpringApplicationRunListeners listeners = getRunListeners(args);
 		listeners.starting(bootstrapContext, this.mainApplicationClass);
 		try {
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
+			/**
+			 * 准备环境
+			 * @see SpringApplication#prepareEnvironment(SpringApplicationRunListeners, DefaultBootstrapContext, ApplicationArguments)
+			 */
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, bootstrapContext, applicationArguments);
 			configureIgnoreBeanInfo(environment);
 			Banner printedBanner = printBanner(environment);
+			/**
+			 * 返回的是这个
+			 * @see AnnotationConfigServletWebServerApplicationContext
+			 */
 			context = createApplicationContext();
 			context.setApplicationStartup(this.applicationStartup);
+			/**
+			 * 准备容器此时还木有进入刷新容器的流程
+			 * @see SpringApplication#prepareContext(DefaultBootstrapContext, ConfigurableApplicationContext, ConfigurableEnvironment, SpringApplicationRunListeners, ApplicationArguments, Banner) 
+			 */
 			prepareContext(bootstrapContext, context, environment, listeners, applicationArguments, printedBanner);
+			/**
+			 * 刷新逻辑走一遍
+			 */
 			refreshContext(context);
 			afterRefresh(context, applicationArguments);
 			stopWatch.stop();
@@ -368,9 +442,17 @@ public class SpringApplication {
 	private ConfigurableEnvironment prepareEnvironment(SpringApplicationRunListeners listeners,
 			DefaultBootstrapContext bootstrapContext, ApplicationArguments applicationArguments) {
 		// Create and configure the environment
+		/**
+		 * servlet 环境
+		 * @see ApplicationServletEnvironment
+		 */
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
 		ConfigurationPropertySources.attach(environment);
+		/**
+		 * 发布环境准备事件，此时容器还没有创建
+		 * @see SpringApplicationRunListeners#environmentPrepared(ConfigurableBootstrapContext, ConfigurableEnvironment) 
+		 */
 		listeners.environmentPrepared(bootstrapContext, environment);
 		DefaultPropertiesPropertySource.moveToEnd(environment);
 		Assert.state(!environment.containsProperty("spring.main.environment-prefix"),
@@ -400,8 +482,21 @@ public class SpringApplication {
 			ApplicationArguments applicationArguments, Banner printedBanner) {
 		context.setEnvironment(environment);
 		postProcessApplicationContext(context);
+		/**
+		 * 调用 ApplicationContextInitializer 的 initalizer()
+		 * @see SpringApplication#applyInitializers(ConfigurableApplicationContext) 执行初始化
+		 */
 		applyInitializers(context);
+		/**
+		 * 发布容器准备事件
+		 * @see org.springframework.boot.context.event.ApplicationContextInitializedEvent
+		 * @see SpringApplicationRunListeners#contextPrepared(ConfigurableApplicationContext)
+		 */
 		listeners.contextPrepared(context);
+		/**
+		 * 发布 引导器关闭,此时 容器已经准备完成
+		 * @see BootstrapContextClosedEvent
+		 */
 		bootstrapContext.close(context);
 		if (this.logStartupInfo) {
 			logStartupInfo(context.getParent() == null);
@@ -417,20 +512,39 @@ public class SpringApplication {
 			((DefaultListableBeanFactory) beanFactory)
 					.setAllowBeanDefinitionOverriding(this.allowBeanDefinitionOverriding);
 		}
+		/**
+		 * 如果配置懒加载,注册懒加载的支持
+		 * @see LazyInitializationBeanFactoryPostProcessor
+		 */
 		if (this.lazyInitialization) {
 			context.addBeanFactoryPostProcessor(new LazyInitializationBeanFactoryPostProcessor());
 		}
 		// Load the sources
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
+		/**
+		 * 此时将用户导入的类(一般就是 SpringApplication.run(类))注册为BD
+		 * 后续按照spring流程解析这个BD
+		 */
 		load(context, sources.toArray(new Object[0]));
+		/**
+		 * 发布容器准备完成事件
+		 * @see org.springframework.boot.context.event.ApplicationPreparedEvent
+		 * @see SpringApplicationRunListeners#contextLoaded(ConfigurableApplicationContext) 
+		 */
 		listeners.contextLoaded(context);
 	}
 
 	private void refreshContext(ConfigurableApplicationContext context) {
+		/**
+		 * 注册容器关闭监听器
+		 */
 		if (this.registerShutdownHook) {
 			shutdownHook.registerApplicationContext(context);
 		}
+		/**
+		 * 刷新逻辑
+		 */
 		refresh(context);
 	}
 
@@ -441,6 +555,11 @@ public class SpringApplication {
 
 	private SpringApplicationRunListeners getRunListeners(String[] args) {
 		Class<?>[] types = new Class<?>[] { SpringApplication.class, String[].class };
+		/**
+		 * 创建实例
+		 * 参数
+		 * @see org.springframework.boot.context.event.EventPublishingRunListener
+		 */
 		return new SpringApplicationRunListeners(logger,
 				getSpringFactoriesInstances(SpringApplicationRunListener.class, types, this, args),
 				this.applicationStartup);
@@ -454,6 +573,10 @@ public class SpringApplication {
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
+		/**
+		 * 使用指定参数的构造器创建实例
+		 * @see SpringApplication#createSpringFactoriesInstances(Class, Class[], ClassLoader, Object[], Set)
+		 */
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
 		AnnotationAwareOrderComparator.sort(instances);
 		return instances;
@@ -593,6 +716,11 @@ public class SpringApplication {
 	 * @see #setApplicationContextFactory(ApplicationContextFactory)
 	 */
 	protected ConfigurableApplicationContext createApplicationContext() {
+		/**
+		 * @see ApplicationContextFactory#DEFAULT
+		 * servlet
+		 * @see AnnotationConfigServletWebServerApplicationContext
+		 */
 		return this.applicationContextFactory.create(this.webApplicationType);
 	}
 
@@ -627,10 +755,33 @@ public class SpringApplication {
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected void applyInitializers(ConfigurableApplicationContext context) {
+		/**
+		 * @see org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer#initialize(ConfigurableApplicationContext)
+		 *
+		 * 读取 配置文件中 context.initializer.classes  =  实现了 ApplicationContextInitializer 的类
+		 * @see org.springframework.boot.context.config.DelegatingApplicationContextInitializer#initialize(ConfigurableApplicationContext)
+		 *
+		 * @see org.springframework.boot.context.ContextIdApplicationContextInitializer#initialize(ConfigurableApplicationContext)
+		 *
+		 * 添加了一个监听器
+		 * @see org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener.ConditionEvaluationReportListener
+		 * 直接注册了一个单例
+		 * @see org.springframework.boot.autoconfigure.condition.ConditionEvaluationReport
+		 * @see org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLoggingListener#initialize(ConfigurableApplicationContext)
+		 *
+		 * 
+		 * @see org.springframework.boot.context.ConfigurationWarningsApplicationContextInitializer#initialize(ConfigurableApplicationContext) 
+		 * 
+		 * 
+		 * @see org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer#initialize(ConfigurableApplicationContext) 
+		 * 
+		 * @see org.springframework.boot.web.context.ServerPortInfoApplicationContextInitializer#initialize(ConfigurableApplicationContext) 
+		 */
 		for (ApplicationContextInitializer initializer : getInitializers()) {
 			Class<?> requiredType = GenericTypeResolver.resolveTypeArgument(initializer.getClass(),
 					ApplicationContextInitializer.class);
 			Assert.isInstanceOf(requiredType, context, "Unable to call initializer.");
+
 			initializer.initialize(context);
 		}
 	}
@@ -751,6 +902,10 @@ public class SpringApplication {
 	 * @param applicationContext the application context to refresh
 	 */
 	protected void refresh(ConfigurableApplicationContext applicationContext) {
+		/**
+		 * servlet 环境的刷新
+		 * @see AnnotationConfigServletWebServerApplicationContext#refresh()
+		 */
 		applicationContext.refresh();
 	}
 
@@ -1340,6 +1495,10 @@ public class SpringApplication {
 	 * @return the running {@link ApplicationContext}
 	 */
 	public static ConfigurableApplicationContext run(Class<?>[] primarySources, String[] args) {
+		/**
+		 * @see SpringApplication#SpringApplication(Class[]) 构造
+		 * @see SpringApplication#run(String...) 运行
+		 */
 		return new SpringApplication(primarySources).run(args);
 	}
 

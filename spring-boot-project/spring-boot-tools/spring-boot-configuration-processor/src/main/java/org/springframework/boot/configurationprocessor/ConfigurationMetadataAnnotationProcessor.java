@@ -69,6 +69,10 @@ import org.springframework.boot.configurationprocessor.metadata.ItemMetadata;
 		"org.springframework.context.annotation.Configuration" })
 public class ConfigurationMetadataAnnotationProcessor extends AbstractProcessor {
 
+	public ConfigurationMetadataAnnotationProcessor(){
+
+	}
+
 	static final String ADDITIONAL_METADATA_LOCATIONS_OPTION = "org.springframework.boot.configurationprocessor.additionalMetadataLocations";
 
 	static final String CONFIGURATION_PROPERTIES_ANNOTATION = "org.springframework.boot.context.properties.ConfigurationProperties";

@@ -39,6 +39,13 @@ final class AutoConfigurationMetadataLoader {
 	}
 
 	static AutoConfigurationMetadata loadMetadata(ClassLoader classLoader) {
+		/**
+		 * 编译器生成文件
+		 * 使用的javac的SPI技术
+		 * 在META-INF/service/javax.annotation.processing.Processor
+		 * 配置需要编译解析的类
+		 * @see org.springframework.boot.autoconfigureprocessor.AutoConfigureAnnotationProcessor#writeProperties()
+		 */
 		return loadMetadata(classLoader, PATH);
 	}
 

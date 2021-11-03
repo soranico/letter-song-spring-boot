@@ -91,10 +91,19 @@ public abstract class AutoConfigurationPackages {
 	 * @param packageNames the package names to set
 	 */
 	public static void register(BeanDefinitionRegistry registry, String... packageNames) {
+		/**
+		 * 有则获取BD添加新的扫描包
+		 * 到集合中
+		 */
 		if (registry.containsBeanDefinition(BEAN)) {
 			BasePackagesBeanDefinition beanDefinition = (BasePackagesBeanDefinition) registry.getBeanDefinition(BEAN);
 			beanDefinition.addBasePackages(packageNames);
 		}
+		/**
+		 * 注册一个新的BD到容器
+		 * @see BasePackagesBeanDefinition
+		 * 这个BD负责扫描配置的包路径
+		 */
 		else {
 			registry.registerBeanDefinition(BEAN, new BasePackagesBeanDefinition(packageNames));
 		}
@@ -108,6 +117,11 @@ public abstract class AutoConfigurationPackages {
 
 		@Override
 		public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+			/**
+			 * 查找注解配置的扫描包
+			 * @see AutoConfigurationPackage
+			 * 没有的话则扫描 SpringApplication.run(class) 这个class对应的包
+			 */
 			register(registry, new PackageImports(metadata).getPackageNames().toArray(new String[0]));
 		}
 
