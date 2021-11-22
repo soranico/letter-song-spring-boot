@@ -206,6 +206,16 @@ public abstract class AbstractFilterRegistrationBean<T extends Filter> extends D
 
 	@Override
 	protected Dynamic addRegistration(String description, ServletContext servletContext) {
+		/**
+		 * 子类实现
+		 * @see FilterRegistrationBean#getFilter()
+		 * 返回的是里面的具体Filter
+		 *
+		 * 默认的
+		 * @see org.springframework.web.filter.CharacterEncodingFilter
+		 * @see org.springframework.web.filter.FormContentFilter
+		 * @see org.springframework.web.filter.RequestContextFilter
+		 */
 		Filter filter = getFilter();
 		return servletContext.addFilter(getOrDeduceName(filter), filter);
 	}

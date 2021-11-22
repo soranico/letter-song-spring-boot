@@ -62,6 +62,17 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 		this.application = application;
 		this.args = args;
 		this.initialMulticaster = new SimpleApplicationEventMulticaster();
+		/**
+		 *
+		 * @see org.springframework.boot.env.EnvironmentPostProcessorApplicationListener
+		 * @see org.springframework.boot.context.config.AnsiOutputApplicationListener
+		 * @see org.springframework.boot.context.logging.LoggingApplicationListener
+		 * @see org.springframework.boot.autoconfigure.BackgroundPreinitializer
+		 * @see org.springframework.boot.context.config.DelegatingApplicationListener
+		 * @see org.springframework.boot.builder.ParentContextCloserApplicationListener
+		 * @see org.springframework.boot.ClearCachesApplicationListener
+		 * @see org.springframework.boot.context.FileEncodingApplicationListener
+		 */
 		for (ApplicationListener<?> listener : application.getListeners()) {
 			this.initialMulticaster.addApplicationListener(listener);
 		}
@@ -138,6 +149,10 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 
 	@Override
 	public void running(ConfigurableApplicationContext context) {
+		/**
+		 * 判断容器环境准备完成事件开启的后台任务是否执行完成
+		 * @see org.springframework.boot.autoconfigure.BackgroundPreinitializer#onApplicationEvent(org.springframework.boot.context.event.SpringApplicationEvent)
+		 */
 		context.publishEvent(new ApplicationReadyEvent(this.application, this.args, context));
 		AvailabilityChangeEvent.publish(context, ReadinessState.ACCEPTING_TRAFFIC);
 	}

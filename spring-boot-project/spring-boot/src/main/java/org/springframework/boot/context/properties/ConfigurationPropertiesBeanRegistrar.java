@@ -51,6 +51,10 @@ final class ConfigurationPropertiesBeanRegistrar {
 	void register(Class<?> type) {
 		MergedAnnotation<ConfigurationProperties> annotation = MergedAnnotations
 				.from(type, SearchStrategy.TYPE_HIERARCHY).get(ConfigurationProperties.class);
+		/**
+		 * 容器中不存在这个BD
+		 * 默认注册进去
+		 */
 		register(type, annotation);
 	}
 

@@ -16,11 +16,6 @@
 
 package org.springframework.boot.web.server;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -28,6 +23,11 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.util.Assert;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * {@link BeanPostProcessor} that applies all {@link ErrorPageRegistrar}s from the bean
@@ -52,6 +52,11 @@ public class ErrorPageRegistrarBeanPostProcessor implements BeanPostProcessor, B
 
 	@Override
 	public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+		/**
+		 * @see org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory
+		 * 在创建web容器工厂时会执行
+		 * @see ErrorPageRegistrarBeanPostProcessor#postProcessBeforeInitialization(ErrorPageRegistry)
+		 */
 		if (bean instanceof ErrorPageRegistry) {
 			postProcessBeforeInitialization((ErrorPageRegistry) bean);
 		}
@@ -64,6 +69,10 @@ public class ErrorPageRegistrarBeanPostProcessor implements BeanPostProcessor, B
 	}
 
 	private void postProcessBeforeInitialization(ErrorPageRegistry registry) {
+		/**
+		 * 初始化了
+		 * @see org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration
+		 */
 		for (ErrorPageRegistrar registrar : getRegistrars()) {
 			registrar.registerErrorPages(registry);
 		}
@@ -72,6 +81,10 @@ public class ErrorPageRegistrarBeanPostProcessor implements BeanPostProcessor, B
 	private Collection<ErrorPageRegistrar> getRegistrars() {
 		if (this.registrars == null) {
 			// Look up does not include the parent context
+			/**
+			 * 自动装配引入
+			 * @see org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration#errorPageCustomizer(org.springframework.boot.autoconfigure.web.servlet.DispatcherServletPath)
+			 */
 			this.registrars = new ArrayList<>(
 					this.beanFactory.getBeansOfType(ErrorPageRegistrar.class, false, false).values());
 			this.registrars.sort(AnnotationAwareOrderComparator.INSTANCE);

@@ -29,6 +29,7 @@ import javax.servlet.ServletRegistration;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.servlet.DispatcherServlet;
 
 /**
  * A {@link ServletContextInitializer} to register {@link Servlet}s in a Servlet 3.0+
@@ -175,6 +176,12 @@ public class ServletRegistrationBean<T extends Servlet> extends DynamicRegistrat
 	@Override
 	protected ServletRegistration.Dynamic addRegistration(String description, ServletContext servletContext) {
 		String name = getServletName();
+		/**
+		 * 此时添加的是
+		 * @see org.springframework.web.servlet.DispatcherServlet
+		 * 是通过注册进来的
+		 * @see org.springframework.boot.autoconfigure.web.servlet.DispatcherServletRegistrationBean#DispatcherServletRegistrationBean(org.springframework.web.servlet.DispatcherServlet, java.lang.String)
+		 */
 		return servletContext.addServlet(name, this.servlet);
 	}
 
@@ -193,6 +200,10 @@ public class ServletRegistrationBean<T extends Servlet> extends DynamicRegistrat
 		if (!ObjectUtils.isEmpty(urlMapping)) {
 			registration.addMapping(urlMapping);
 		}
+		/**
+		 * 设置 DispactherServlet 不初始化
+		 * 在使用时才进行初始化
+		 */
 		registration.setLoadOnStartup(this.loadOnStartup);
 		if (this.multipartConfig != null) {
 			registration.setMultipartConfig(this.multipartConfig);

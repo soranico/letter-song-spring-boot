@@ -112,8 +112,17 @@ public class ErrorMvcAutoConfiguration {
 				errorViewResolvers.orderedStream().collect(Collectors.toList()));
 	}
 
+
 	@Bean
 	public ErrorPageCustomizer errorPageCustomizer(DispatcherServletPath dispatcherServletPath) {
+		/**
+		 * 会先创建这个
+		 * @see org.springframework.boot.autoconfigure.web.servlet.DispatcherServletRegistrationBean
+		 *
+		 * @see org.springframework.boot.actuate.autoconfigure.web.servlet.WebMvcEndpointChildContextConfiguration#dispatcherServletRegistrationBean(org.springframework.web.servlet.DispatcherServlet)
+		 *
+		 *
+		 */
 		return new ErrorPageCustomizer(this.serverProperties, dispatcherServletPath);
 	}
 

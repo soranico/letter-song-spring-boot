@@ -114,10 +114,16 @@ class SpringApplicationRunListeners {
 	}
 
 	void started(ConfigurableApplicationContext context) {
+		/**
+		 * @see org.springframework.boot.context.event.EventPublishingRunListener#started(ConfigurableApplicationContext) 
+		 */
 		doWithListeners("spring.boot.application.started", (listener) -> listener.started(context));
 	}
 
 	void running(ConfigurableApplicationContext context) {
+		/**
+		 * @see org.springframework.boot.context.event.EventPublishingRunListener#running(ConfigurableApplicationContext) 
+		 */
 		doWithListeners("spring.boot.application.running", (listener) -> listener.running(context));
 	}
 

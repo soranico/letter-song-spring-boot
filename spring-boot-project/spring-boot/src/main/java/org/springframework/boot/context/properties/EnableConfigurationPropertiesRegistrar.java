@@ -16,10 +16,6 @@
 
 package org.springframework.boot.context.properties;
 
-import java.util.Arrays;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
@@ -28,6 +24,10 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.Conventions;
 import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.type.AnnotationMetadata;
+
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * {@link ImportBeanDefinitionRegistrar} for
@@ -41,11 +41,41 @@ class EnableConfigurationPropertiesRegistrar implements ImportBeanDefinitionRegi
 	private static final String METHOD_VALIDATION_EXCLUDE_FILTER_BEAN_NAME = Conventions
 			.getQualifiedAttributeName(EnableConfigurationPropertiesRegistrar.class, "methodValidationExcludeFilter");
 
+	/**
+	 * 通过中注解Import进来的
+	 * @see EnableConfigurationProperties
+	 */
 	@Override
 	public void registerBeanDefinitions(AnnotationMetadata metadata, BeanDefinitionRegistry registry) {
+		/**
+		 * 注册处理配置参数绑定的BD
+		 * @see ConfigurationPropertiesBindingPostProcessor 这个是BPP
+		 * @see BoundConfigurationProperties
+		 *
+		 * 用于创建 ConfigurationPropertiesBinder
+		 * @see ConfigurationPropertiesBinder.Factory
+		 *
+		 * 用于真正执行配置参数的绑定
+		 * @see ConfigurationPropertiesBinder
+		 *
+		 */
 		registerInfrastructureBeans(registry);
+
+		/**
+		 * 注册方法级别的注解排除
+		 * @see MethodValidationExcludeFilter
+		 */
 		registerMethodValidationExcludeFilter(registry);
+
 		ConfigurationPropertiesBeanRegistrar beanRegistrar = new ConfigurationPropertiesBeanRegistrar(registry);
+		/**
+		 * 这里获取的是
+		 * @see EnableConfigurationProperties
+		 * 里面配置的类
+		 * 如果容器里面没有这个类那么会默认注册到容器
+		 * 
+		 * @see ConfigurationPropertiesBeanRegistrar#register(Class) 
+		 */
 		getTypes(metadata).forEach(beanRegistrar::register);
 	}
 
@@ -56,7 +86,22 @@ class EnableConfigurationPropertiesRegistrar implements ImportBeanDefinitionRegi
 	}
 
 	static void registerInfrastructureBeans(BeanDefinitionRegistry registry) {
+		/**
+		 * 注册一个BPP
+		 * 用于处理绑定配置参数
+		 * @see ConfigurationPropertiesBindingPostProcessor
+		 *
+		 * 用于创建 ConfigurationPropertiesBinder
+		 * @see ConfigurationPropertiesBinder.Factory
+		 *
+		 * 用于真正执行配置参数的绑定
+		 * @see ConfigurationPropertiesBinder
+		 */
 		ConfigurationPropertiesBindingPostProcessor.register(registry);
+		/**
+		 * 用于记录绑定的配置参数
+		 * @see BoundConfigurationProperties
+		 */
 		BoundConfigurationProperties.register(registry);
 	}
 

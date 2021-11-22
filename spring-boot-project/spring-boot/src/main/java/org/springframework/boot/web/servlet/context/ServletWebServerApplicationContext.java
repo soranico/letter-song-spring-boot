@@ -16,24 +16,8 @@
 
 package org.springframework.boot.web.servlet.context;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EventListener;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Predicate;
-
-import javax.servlet.Filter;
-import javax.servlet.Servlet;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.config.Scope;
@@ -43,6 +27,8 @@ import org.springframework.boot.availability.AvailabilityChangeEvent;
 import org.springframework.boot.availability.ReadinessState;
 import org.springframework.boot.web.context.ConfigurableWebServerApplicationContext;
 import org.springframework.boot.web.context.WebServerGracefulShutdownLifecycle;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.server.ErrorPageRegistrarBeanPostProcessor;
 import org.springframework.boot.web.server.WebServer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
@@ -61,11 +47,12 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.context.ContextLoaderListener;
 import org.springframework.web.context.ServletContextAware;
 import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.GenericWebApplicationContext;
-import org.springframework.web.context.support.ServletContextAwareProcessor;
-import org.springframework.web.context.support.ServletContextResource;
-import org.springframework.web.context.support.ServletContextScope;
-import org.springframework.web.context.support.WebApplicationContextUtils;
+import org.springframework.web.context.support.*;
+import org.springframework.web.servlet.FrameworkServlet;
+import org.springframework.web.servlet.support.AbstractDispatcherServletInitializer;
+
+import javax.servlet.*;
+import java.util.*;
 
 /**
  * A {@link WebApplicationContext} that can be used to bootstrap itself from a contained
@@ -176,7 +163,7 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 			 * 重写添加了清除缓存的逻辑
 			 * @see AnnotationConfigServletWebServerApplicationContext#prepareRefresh()
 			 *
-			 * 添加了支持Servlet环境的Scope 以及Request等依赖注入的支持
+			 * 重写添加了支持Servlet环境的Scope 以及Request等依赖注入的支持
 			 * @see AnnotationConfigServletWebServerApplicationContext#postProcessBeanFactory(ConfigurableListableBeanFactory)
 			 *
 			 * 解析配置类最终扫描执行这个
@@ -204,8 +191,17 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 			 * @see ConfigurationClassParser#processConfigurationClass(org.springframework.context.annotation.ConfigurationClass, java.util.function.Predicate)
 			 * 首先调用条件判断进行
 			 * @see org.springframework.context.annotation.ConditionEvaluator#shouldSkip(AnnotatedTypeMetadata, ConfigurationCondition.ConfigurationPhase)
-			 * 一般会调用进行集体的条件判断
+			 * 一般会调用进行具体的条件判断
 			 * @see org.springframework.boot.autoconfigure.condition.SpringBootCondition#matches(org.springframework.context.annotation.ConditionContext, org.springframework.core.type.AnnotatedTypeMetadata)
+			 *
+			 *
+			 *
+			 * 重写了 onRefresh(),里面启动了 tomcat
+			 * 和mvc 不同的是，mvc用 Tomcat 启动容器
+			 * spring boot 用容器启动tomcat
+			 * @see ServletWebServerApplicationContext#onRefresh()
+			 *
+			 *
 			 */
 			super.refresh();
 		}
@@ -222,6 +218,10 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 	protected void onRefresh() {
 		super.onRefresh();
 		try {
+			/**
+			 * 启动web容器
+			 * @see ServletWebServerApplicationContext#createWebServer()
+			 */
 			createWebServer();
 		}
 		catch (Throwable ex) {
@@ -242,8 +242,28 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 		ServletContext servletContext = getServletContext();
 		if (webServer == null && servletContext == null) {
 			StartupStep createWebServer = this.getApplicationStartup().start("spring.boot.webserver.create");
+			/**
+			 * 从容器中获取当前支持的创建
+			 * 的web容器工厂
+			 * @see ServletWebServerApplicationContext#getWebServerFactory()
+			 *
+			 * 自动装配引入
+			 * @see org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryConfiguration.EmbeddedTomcat#tomcatServletWebServerFactory(org.springframework.beans.factory.ObjectProvider, org.springframework.beans.factory.ObjectProvider, org.springframework.beans.factory.ObjectProvider)
+			 */
 			ServletWebServerFactory factory = getWebServerFactory();
 			createWebServer.tag("factory", factory.getClass().toString());
+			/**
+			 * 从工厂中获取web容器
+			 * @see org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory#getWebServer(ServletContextInitializer...) 
+			 * 传入的 ServletContextInitializer 是 servlet3.0规范
+			 * 在web容器启动时会调用
+			 * @see ServletContextInitializer#onStartup(ServletContext)
+			 *
+			 * 这里完成了代码的3.0规范
+			 * @see TomcatServletWebServerFactory#prepareContext(org.apache.catalina.Host, org.springframework.boot.web.servlet.ServletContextInitializer[])
+			 * 启动后会调用
+			 * @see org.springframework.boot.web.embedded.tomcat.TomcatStarter#onStartup(Set, ServletContext)
+			 */
 			this.webServer = factory.getWebServer(getSelfInitializer());
 			createWebServer.end();
 			getBeanFactory().registerSingleton("webServerGracefulShutdown",
@@ -270,6 +290,13 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 	 */
 	protected ServletWebServerFactory getWebServerFactory() {
 		// Use bean names so that we don't consider the hierarchy
+		/**
+		 * 从容器中获取
+		 * @see ServletWebServerFactory 的bean
+		 * 这个是自动装配引入的
+		 * 通过条件注解当环境配置不同web容器时创建不同的web容器
+		 * @see org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryConfiguration.EmbeddedTomcat#tomcatServletWebServerFactory(org.springframework.beans.factory.ObjectProvider, org.springframework.beans.factory.ObjectProvider, org.springframework.beans.factory.ObjectProvider)
+		 */
 		String[] beanNames = getBeanFactory().getBeanNamesForType(ServletWebServerFactory.class);
 		if (beanNames.length == 0) {
 			throw new ApplicationContextException("Unable to start ServletWebServerApplicationContext due to missing "
@@ -279,6 +306,10 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 			throw new ApplicationContextException("Unable to start ServletWebServerApplicationContext due to multiple "
 					+ "ServletWebServerFactory beans : " + StringUtils.arrayToCommaDelimitedString(beanNames));
 		}
+		/**
+		 * 执行bean创建逻辑
+		 * @see org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryConfiguration.EmbeddedTomcat#tomcatServletWebServerFactory(org.springframework.beans.factory.ObjectProvider, org.springframework.beans.factory.ObjectProvider, org.springframework.beans.factory.ObjectProvider)
+		 */
 		return getBeanFactory().getBean(beanNames[0], ServletWebServerFactory.class);
 	}
 
@@ -293,9 +324,42 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 	}
 
 	private void selfInitialize(ServletContext servletContext) throws ServletException {
+		/**
+		 * 准备容器
+		 * 这里设置了 DispatcherServlet 里面使用的
+		 * @see FrameworkServlet#initWebApplicationContext()
+		 * 也就是设置了加载mvc容器和普通容器为同一个
+		 * 这时只是设置,并没有执行刷新逻辑
+		 */
 		prepareWebApplicationContext(servletContext);
+		/**
+		 * 注册scope
+		 * @see WebApplicationContext#SCOPE_APPLICATION
+		 */
 		registerApplicationScope(servletContext);
+		/**
+		 * 注册一些单例bean
+		 * @see WebApplicationContextUtils#registerEnvironmentBeans(ConfigurableListableBeanFactory, ServletContext, ServletConfig) 
+		 */
 		WebApplicationContextUtils.registerEnvironmentBeans(getBeanFactory(), servletContext);
+		/**
+		 *
+		 * @see org.springframework.boot.autoconfigure.web.servlet.DispatcherServletRegistrationBean#onStartup(ServletContext)
+		 * 这个是由这个后置处理器初始化自动状态进来的
+		 * @see ErrorPageRegistrarBeanPostProcessor#getRegistrars()
+		 * 此时环境里面已经存在
+		 * @see org.springframework.web.servlet.DispatcherServlet
+		 * 因此需要讲这个 servlet 添加到 web容器，但是默认不会立即初始化
+		 * @see ServletRegistrationBean#configure(ServletRegistration.Dynamic) 
+		 *
+		 * 下面三个都是
+		 * @see FilterRegistrationBean#onStartup(ServletContext)
+		 *
+		 * 具体里面的filter
+		 * @see org.springframework.web.filter.CharacterEncodingFilter
+		 * @see org.springframework.web.filter.FormContentFilter
+		 * @see org.springframework.web.filter.RequestContextFilter
+		 */
 		for (ServletContextInitializer beans : getServletContextInitializerBeans()) {
 			beans.onStartup(servletContext);
 		}
@@ -357,11 +421,22 @@ public class ServletWebServerApplicationContext extends GenericWebApplicationCon
 		}
 		servletContext.log("Initializing Spring embedded WebApplicationContext");
 		try {
+			/**
+			 * 设置容器到web容器中
+			 * spring mvc后面会从web容器中拿这个值
+			 *
+			 */
 			servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, this);
 			if (logger.isDebugEnabled()) {
 				logger.debug("Published root WebApplicationContext as ServletContext attribute with name ["
 						+ WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE + "]");
 			}
+			/**
+			 * 设置容器为当前容器,这个容器时已经处理active的
+			 * @see GenericWebApplicationContext#setServletContext(ServletContext)
+			 * 对于mvc 而言这里设置的是一个新的容器,还没有进行refresh()
+			 * @see AbstractDispatcherServletInitializer#registerDispatcherServlet(javax.servlet.ServletContext)
+			 */
 			setServletContext(servletContext);
 			if (logger.isInfoEnabled()) {
 				long elapsedTime = System.currentTimeMillis() - getStartupDate();

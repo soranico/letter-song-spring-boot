@@ -50,6 +50,13 @@ public abstract class RegistrationBean implements ServletContextInitializer, Ord
 			logger.info(StringUtils.capitalize(description) + " was not registered (disabled)");
 			return;
 		}
+		/**
+		 * 注册Servlet
+		 * @see org.springframework.boot.autoconfigure.web.servlet.DispatcherServletRegistrationBean#register(String, ServletContext)
+		 *
+		 * 注册拦截器
+		 * @see FilterRegistrationBean#register(String, ServletContext)
+		 */
 		register(description, servletContext);
 	}
 

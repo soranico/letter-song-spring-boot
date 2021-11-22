@@ -22,6 +22,9 @@ import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.util.Assert;
 import org.springframework.web.servlet.DispatcherServlet;
 
+import javax.servlet.Servlet;
+import javax.servlet.ServletContext;
+
 /**
  * {@link ServletRegistrationBean} for the auto-configured {@link DispatcherServlet}. Both
  * registers the servlet and exposes {@link DispatcherServletPath} information.
@@ -41,6 +44,14 @@ public class DispatcherServletRegistrationBean extends ServletRegistrationBean<D
 	 * @param path the dispatcher servlet path
 	 */
 	public DispatcherServletRegistrationBean(DispatcherServlet servlet, String path) {
+		/**
+		 * 设置父类的 servlet
+		 * @see ServletRegistrationBean#ServletRegistrationBean(Servlet, String...)
+		 * 会在web容器启动调用
+		 * @see org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext#selfInitialize(ServletContext)
+		 * 时作为一个Servlet注册到 web容器中
+		 *
+		 */
 		super(servlet);
 		Assert.notNull(path, "Path must not be null");
 		this.path = path;

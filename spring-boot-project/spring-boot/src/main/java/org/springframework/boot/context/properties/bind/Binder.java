@@ -16,32 +16,20 @@
 
 package org.springframework.boot.context.properties.bind;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-
 import org.springframework.beans.PropertyEditorRegistry;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.context.properties.bind.Bindable.BindRestriction;
-import org.springframework.boot.context.properties.source.ConfigurationProperty;
-import org.springframework.boot.context.properties.source.ConfigurationPropertyName;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
-import org.springframework.boot.context.properties.source.ConfigurationPropertyState;
+import org.springframework.boot.context.properties.source.*;
 import org.springframework.boot.convert.ApplicationConversionService;
 import org.springframework.core.convert.ConversionService;
 import org.springframework.core.convert.ConverterNotFoundException;
 import org.springframework.core.env.Environment;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.util.Assert;
+
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * A container object which Binds objects from one or more
@@ -243,6 +231,9 @@ public class Binder {
 	 * @return the binding result (never {@code null})
 	 */
 	public <T> BindResult<T> bind(String name, Bindable<T> target, BindHandler handler) {
+		/**
+		 * @see Binder#bind(org.springframework.boot.context.properties.source.ConfigurationPropertyName, org.springframework.boot.context.properties.bind.Bindable, org.springframework.boot.context.properties.bind.BindHandler)
+		 */
 		return bind(ConfigurationPropertyName.of(name), target, handler);
 	}
 
@@ -256,6 +247,10 @@ public class Binder {
 	 * @return the binding result (never {@code null})
 	 */
 	public <T> BindResult<T> bind(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler) {
+		/**
+		 * 完成属性和配置的绑定
+		 * @see Binder#bind(org.springframework.boot.context.properties.source.ConfigurationPropertyName, org.springframework.boot.context.properties.bind.Bindable, org.springframework.boot.context.properties.bind.BindHandler, boolean)
+		 */
 		T bound = bind(name, target, handler, false);
 		return BindResult.of(bound);
 	}
@@ -326,6 +321,9 @@ public class Binder {
 		Assert.notNull(target, "Target must not be null");
 		handler = (handler != null) ? handler : this.defaultBindHandler;
 		Context context = new Context();
+		/**
+		 * @see Binder#bind(ConfigurationPropertyName, Bindable, BindHandler, Context, boolean, boolean) 参数绑定
+		 */
 		return bind(name, target, handler, context, false, create);
 	}
 
@@ -337,6 +335,9 @@ public class Binder {
 				return handleBindResult(name, target, handler, context, null, create);
 			}
 			target = replacementTarget;
+			/**
+			 * @see Binder#bindObject(ConfigurationPropertyName, Bindable, BindHandler, Context, boolean) 
+			 */
 			Object bound = bindObject(name, target, handler, context, allowRecursiveBinding);
 			return handleBindResult(name, target, handler, context, bound, create);
 		}
@@ -387,6 +388,9 @@ public class Binder {
 
 	private <T> Object bindObject(ConfigurationPropertyName name, Bindable<T> target, BindHandler handler,
 			Context context, boolean allowRecursiveBinding) {
+		/**
+		 * 获取属性对应的配置的key和value
+		 */
 		ConfigurationProperty property = findProperty(name, target, context);
 		if (property == null && context.depth != 0 && containsNoDescendantOf(context.getSources(), name)) {
 			return null;
@@ -397,6 +401,12 @@ public class Binder {
 		}
 		if (property != null) {
 			try {
+				/**
+				 * 解析真实的参数值
+				 * 可能存在el表达式形式
+				 * 这步会解析出 el表达式的值
+				 * @see Binder#bindProperty(Bindable, Context, ConfigurationProperty) 
+				 */
 				return bindProperty(target, context, property);
 			}
 			catch (ConverterNotFoundException ex) {
@@ -408,6 +418,9 @@ public class Binder {
 				throw ex;
 			}
 		}
+		/**
+		 * @see Binder#bindDataObject(ConfigurationPropertyName, Bindable, BindHandler, Context, boolean) 
+		 */
 		return bindDataObject(name, target, handler, context, allowRecursiveBinding);
 	}
 
@@ -440,6 +453,11 @@ public class Binder {
 		if (name.isEmpty() || target.hasBindRestriction(BindRestriction.NO_DIRECT_PROPERTY)) {
 			return null;
 		}
+		/**
+		 * 解析需要注入的值
+		 * @see SpringIterableConfigurationPropertySource#getConfigurationProperty(ConfigurationPropertyName) 
+		 * @see SpringConfigurationPropertySource#getConfigurationProperty(ConfigurationPropertyName) 
+		 */
 		for (ConfigurationPropertySource source : context.getSources()) {
 			ConfigurationProperty property = source.getConfigurationProperty(name);
 			if (property != null) {
@@ -452,6 +470,9 @@ public class Binder {
 	private <T> Object bindProperty(Bindable<T> target, Context context, ConfigurationProperty property) {
 		context.setConfigurationProperty(property);
 		Object result = property.getValue();
+		/**
+		 * 解析el表达式
+		 */
 		result = this.placeholdersResolver.resolvePlaceholders(result);
 		result = context.getConverter().convert(result, target);
 		return result;
@@ -462,10 +483,21 @@ public class Binder {
 		if (isUnbindableBean(name, target, context)) {
 			return null;
 		}
+		/**
+		 * 获取属性所在的类
+		 */
 		Class<?> type = target.getType().resolve(Object.class);
 		if (!allowRecursiveBinding && context.isBindingDataObject(type)) {
 			return null;
 		}
+		/**
+		 * 这里会从
+		 * @see JavaBeanBinder#bind(org.springframework.boot.context.properties.bind.JavaBeanBinder.BeanSupplier, org.springframework.boot.context.properties.bind.DataObjectPropertyBinder, org.springframework.boot.context.properties.bind.JavaBeanBinder.BeanProperty)
+		 * 这一步传入的 propertyName 是拼接完成的
+		 * 即 prefix.属性名
+		 * 此时会返回真正的值
+		 * @see Binder#bind(org.springframework.boot.context.properties.source.ConfigurationPropertyName, org.springframework.boot.context.properties.bind.Bindable, org.springframework.boot.context.properties.bind.BindHandler, org.springframework.boot.context.properties.bind.Binder.Context, boolean, boolean)
+		 */
 		DataObjectPropertyBinder propertyBinder = (propertyName, propertyTarget) -> bind(name.append(propertyName),
 				propertyTarget, handler, context, false, false);
 		return context.withDataObject(type, () -> {

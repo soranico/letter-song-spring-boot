@@ -16,11 +16,6 @@
 
 package org.springframework.boot.context.properties;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.BeansException;
 import org.springframework.beans.PropertyEditorRegistry;
 import org.springframework.beans.factory.BeanFactory;
@@ -29,15 +24,8 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.boot.context.properties.bind.AbstractBindHandler;
-import org.springframework.boot.context.properties.bind.BindContext;
-import org.springframework.boot.context.properties.bind.BindHandler;
-import org.springframework.boot.context.properties.bind.BindResult;
-import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.*;
 import org.springframework.boot.context.properties.bind.Bindable.BindRestriction;
-import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.boot.context.properties.bind.BoundPropertiesTrackingBindHandler;
-import org.springframework.boot.context.properties.bind.PropertySourcesPlaceholdersResolver;
 import org.springframework.boot.context.properties.bind.handler.IgnoreErrorsBindHandler;
 import org.springframework.boot.context.properties.bind.handler.IgnoreTopLevelConverterNotFoundBindHandler;
 import org.springframework.boot.context.properties.bind.handler.NoUnboundElementsBindHandler;
@@ -54,6 +42,11 @@ import org.springframework.core.convert.ConversionService;
 import org.springframework.core.env.PropertySources;
 import org.springframework.validation.Validator;
 import org.springframework.validation.annotation.Validated;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Internal class used by the {@link ConfigurationPropertiesBindingPostProcessor} to
@@ -92,7 +85,15 @@ class ConfigurationPropertiesBinder {
 	BindResult<?> bind(ConfigurationPropertiesBean propertiesBean) {
 		Bindable<?> target = propertiesBean.asBindTarget();
 		ConfigurationProperties annotation = propertiesBean.getAnnotation();
+		/**
+		 * 这里是个构建者
+		 * 对于不同情况的注入会构建不同的处理
+		 * @see ConfigurationPropertiesBinder#getBindHandler(Bindable, ConfigurationProperties) 
+		 */
 		BindHandler bindHandler = getBindHandler(target, annotation);
+		/**
+		 * @see Binder#bind(java.lang.String, org.springframework.boot.context.properties.bind.Bindable, org.springframework.boot.context.properties.bind.BindHandler)
+		 */
 		return getBinder().bind(annotation.prefix(), target, bindHandler);
 	}
 
@@ -165,6 +166,9 @@ class ConfigurationPropertiesBinder {
 
 	private Binder getBinder() {
 		if (this.binder == null) {
+			/**
+			 * @see ConfigurationPropertiesBinder#getConfigurationPropertySources()
+			 */
 			this.binder = new Binder(getConfigurationPropertySources(), getPropertySourcesPlaceholdersResolver(),
 					getConversionServices(), getPropertyEditorInitializer(), null,
 					ConfigurationPropertiesBindConstructorProvider.INSTANCE);
@@ -173,6 +177,9 @@ class ConfigurationPropertiesBinder {
 	}
 
 	private Iterable<ConfigurationPropertySource> getConfigurationPropertySources() {
+		/**
+		 *
+		 */
 		return ConfigurationPropertySources.from(this.propertySources);
 	}
 

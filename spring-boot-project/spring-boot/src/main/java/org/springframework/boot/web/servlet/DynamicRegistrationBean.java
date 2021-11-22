@@ -21,6 +21,7 @@ import java.util.Map;
 
 import javax.servlet.Registration;
 import javax.servlet.ServletContext;
+import javax.servlet.ServletRegistration;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -105,11 +106,22 @@ public abstract class DynamicRegistrationBean<D extends Registration.Dynamic> ex
 
 	@Override
 	protected final void register(String description, ServletContext servletContext) {
+		/**
+		 * 通过web容器启动调用注册 Servlet
+		 * @see ServletRegistrationBean#addRegistration(String, ServletContext) 注册DispactherServlet到web容器
+		 *
+		 * 往web容器注册拦截器
+		 * @see AbstractFilterRegistrationBean#addRegistration(String, ServletContext)
+		 */
 		D registration = addRegistration(description, servletContext);
 		if (registration == null) {
 			logger.info(StringUtils.capitalize(description) + " was not registered (possibly already registered?)");
 			return;
 		}
+		/**
+		 * 配置注册的servlet
+		 * @see ServletRegistrationBean#configure(ServletRegistration.Dynamic)
+		 */
 		configure(registration);
 	}
 

@@ -84,6 +84,10 @@ class WebMvcEndpointChildContextConfiguration {
 
 	@Bean(name = DispatcherServletAutoConfiguration.DEFAULT_DISPATCHER_SERVLET_REGISTRATION_BEAN_NAME)
 	DispatcherServletRegistrationBean dispatcherServletRegistrationBean(DispatcherServlet dispatcherServlet) {
+		/**
+		 * 此时会先创建
+		 * @see WebMvcEndpointChildContextConfiguration#dispatcherServlet()
+		 */
 		return new DispatcherServletRegistrationBean(dispatcherServlet, "/");
 	}
 

@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import javax.naming.NamingException;
+import javax.servlet.ServletContext;
 
 import org.apache.catalina.Container;
 import org.apache.catalina.Context;
@@ -120,6 +121,11 @@ public class TomcatWebServer implements WebServer {
 				});
 
 				// Start the server to trigger initialization listeners
+				/**
+				 * 启动web容器服务
+				 * 然后会发布事件调用到
+				 * @see org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext#selfInitialize(ServletContext)
+				 */
 				this.tomcat.start();
 
 				// We can re-throw failure exception directly in the main thread

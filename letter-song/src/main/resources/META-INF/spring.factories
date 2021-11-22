@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration = com.kano.tomcat.order.KanoAfter,\
+  com.kano.tomcat.order.KanoBefore

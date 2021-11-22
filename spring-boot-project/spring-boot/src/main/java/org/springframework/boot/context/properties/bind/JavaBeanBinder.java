@@ -16,6 +16,14 @@
 
 package org.springframework.boot.context.properties.bind;
 
+import org.springframework.beans.BeanUtils;
+import org.springframework.boot.context.properties.bind.Binder.Context;
+import org.springframework.boot.context.properties.source.ConfigurationPropertyName;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
+import org.springframework.boot.context.properties.source.ConfigurationPropertyState;
+import org.springframework.core.MethodParameter;
+import org.springframework.core.ResolvableType;
+
 import java.beans.Introspector;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -28,14 +36,6 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import org.springframework.beans.BeanUtils;
-import org.springframework.boot.context.properties.bind.Binder.Context;
-import org.springframework.boot.context.properties.source.ConfigurationPropertyName;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySource;
-import org.springframework.boot.context.properties.source.ConfigurationPropertyState;
-import org.springframework.core.MethodParameter;
-import org.springframework.core.ResolvableType;
 
 /**
  * {@link DataObjectBinder} for mutable Java Beans.
@@ -79,6 +79,10 @@ class JavaBeanBinder implements DataObjectBinder {
 	private <T> boolean bind(DataObjectPropertyBinder propertyBinder, Bean<T> bean, BeanSupplier<T> beanSupplier,
 			Context context) {
 		boolean bound = false;
+		/**
+		 * 每个里面封装了属性和器对应的 set/is/get方法
+		 * @see BeanProperty
+		 */
 		for (BeanProperty beanProperty : bean.getProperties().values()) {
 			bound |= bind(beanSupplier, propertyBinder, beanProperty);
 			context.clearConfigurationProperty();
@@ -88,15 +92,25 @@ class JavaBeanBinder implements DataObjectBinder {
 
 	private <T> boolean bind(BeanSupplier<T> beanSupplier, DataObjectPropertyBinder propertyBinder,
 			BeanProperty property) {
+		/**
+		 * 属性名以及对应的类型
+		 */
 		String propertyName = property.getName();
 		ResolvableType type = property.getType();
 		Supplier<Object> value = property.getValue(beanSupplier);
 		Annotation[] annotations = property.getAnnotations();
+		/**
+		 * 解析出真正绑定的值
+		 * @see Binder#bindDataObject(org.springframework.boot.context.properties.source.ConfigurationPropertyName, org.springframework.boot.context.properties.bind.Bindable, org.springframework.boot.context.properties.bind.BindHandler, org.springframework.boot.context.properties.bind.Binder.Context, boolean)
+		 */
 		Object bound = propertyBinder.bindProperty(propertyName,
 				Bindable.of(type).withSuppliedValue(value).withAnnotations(annotations));
 		if (bound == null) {
 			return false;
 		}
+		/**
+		 * 调用set方法反射设置值
+		 */
 		if (property.isSettable()) {
 			property.setValue(beanSupplier, bound);
 		}
@@ -124,12 +138,21 @@ class JavaBeanBinder implements DataObjectBinder {
 		Bean(ResolvableType type, Class<?> resolvedType) {
 			this.type = type;
 			this.resolvedType = resolvedType;
+			/**
+			 * 获取
+			 */
 			addProperties(resolvedType);
 		}
 
 		private void addProperties(Class<?> type) {
 			while (type != null && !Object.class.equals(type)) {
+				/**
+				 * 声明的方法
+				 */
 				Method[] declaredMethods = getSorted(type, Class::getDeclaredMethods, Method::getName);
+				/**
+				 * 声明的属性
+				 */
 				Field[] declaredFields = getSorted(type, Class::getDeclaredFields, Field::getName);
 				addProperties(declaredMethods, declaredFields);
 				type = type.getSuperclass();
@@ -148,15 +171,24 @@ class JavaBeanBinder implements DataObjectBinder {
 					declaredMethods[i] = null;
 				}
 			}
+			/**
+			 * 找到 isXXX() 方法
+			 */
 			for (Method method : declaredMethods) {
 				addMethodIfPossible(method, "is", 0, BeanProperty::addGetter);
 			}
+			/**
+			 * 找到 getXXX() 方法
+			 */
 			for (Method method : declaredMethods) {
 				addMethodIfPossible(method, "get", 0, BeanProperty::addGetter);
 			}
 			for (Method method : declaredMethods) {
 				addMethodIfPossible(method, "set", 1, BeanProperty::addSetter);
 			}
+			/**
+			 * 方法对应的属性
+			 */
 			for (Field field : declaredFields) {
 				addField(field);
 			}

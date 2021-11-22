@@ -424,6 +424,13 @@ public class SpringApplication {
 		}
 
 		try {
+			/**
+			 * 发布容器完成事件
+			 * 因为在容器环境准备完成事件发布的时候
+			 * 启动了后台线程执行一些初始化操作
+			 * 因此这里需要判断任务是否执行完成,如果没有执行完成,那么就会阻塞等待任务执行完
+			 * @see org.springframework.boot.autoconfigure.BackgroundPreinitializer#performPreinitialization()
+			 */
 			listeners.running(context);
 		}
 		catch (Throwable ex) {

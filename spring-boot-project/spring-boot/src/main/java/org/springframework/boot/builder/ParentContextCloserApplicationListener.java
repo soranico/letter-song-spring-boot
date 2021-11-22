@@ -56,13 +56,22 @@ public class ParentContextCloserApplicationListener
 
 	@Override
 	public void onApplicationEvent(ParentContextAvailableEvent event) {
+		/**
+		 * 如果容器存在父容器那么需要给父容器添加一个
+		 * 关闭监听
+		 */
 		maybeInstallListenerInParent(event.getApplicationContext());
 	}
 
 	private void maybeInstallListenerInParent(ConfigurableApplicationContext child) {
 		if (child == this.context && child.getParent() instanceof ConfigurableApplicationContext) {
 			ConfigurableApplicationContext parent = (ConfigurableApplicationContext) child.getParent();
+			/**
+			 * 给父容器添加一个关闭监听
+			 * @see ContextCloserListener
+			 */
 			parent.addApplicationListener(createContextCloserListener(child));
+
 		}
 	}
 

@@ -20,6 +20,7 @@ import java.lang.reflect.Method;
 
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.util.ReflectionUtils;
 
 /**
@@ -31,6 +32,15 @@ class ClearCachesApplicationListener implements ApplicationListener<ContextRefre
 
 	@Override
 	public void onApplicationEvent(ContextRefreshedEvent event) {
+		/**
+		 *
+		 * @see AbstractApplicationContext#finishRefresh()
+		 *
+		 * 容器刷新完毕需要清除在创建bean过程缓存的
+		 * 方法和字段
+		 * @see ReflectionUtils#getDeclaredMethods(java.lang.Class, boolean)
+		 * 比如在查找注解的方法和属性的时候都会进行缓存
+		 */
 		ReflectionUtils.clearCache();
 		clearClassLoaderCaches(Thread.currentThread().getContextClassLoader());
 	}

@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.servlet.ServletContainerInitializer;
+import javax.servlet.ServletContext;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Engine;
@@ -182,9 +183,17 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 		if (this.disableMBeanRegistry) {
 			Registry.disableRegistry();
 		}
+		/**
+		 * 创建 Tomcat
+		 * 以及临时文件夹
+		 */
 		Tomcat tomcat = new Tomcat();
 		File baseDir = (this.baseDirectory != null) ? this.baseDirectory : createTempDir("tomcat");
 		tomcat.setBaseDir(baseDir.getAbsolutePath());
+		/**
+		 * 设置连接器
+		 * 负责接受客户端的连接
+		 */
 		Connector connector = new Connector(this.protocol);
 		connector.setThrowOnFailure(true);
 		tomcat.getService().addConnector(connector);
@@ -241,8 +250,18 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 			addJasperInitializer(context);
 		}
 		context.addLifecycleListener(new StaticResourceConfigurer(context));
+		/**
+		 * 添加了一个
+		 * @see org.springframework.boot.web.servlet.server.AbstractServletWebServerFactory.SessionConfiguringInitializer
+		 * 这个只是合并没有添加到web容器
+		 */
 		ServletContextInitializer[] initializersToUse = mergeInitializers(initializers);
 		host.addChild(context);
+		/**
+		 * 这一步相当于代码完成了 servlet3.0的SPI规范
+		 * 添加了
+		 * @see TomcatStarter#onStartup(Set, ServletContext)
+		 */
 		configureContext(context, initializersToUse);
 		postProcessContext(context);
 	}
@@ -357,12 +376,25 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 	 * @param initializers initializers to apply
 	 */
 	protected void configureContext(Context context, ServletContextInitializer[] initializers) {
+		/**
+		 * 实现了
+		 * @see ServletContextInitializer
+		 */
 		TomcatStarter starter = new TomcatStarter(initializers);
 		if (context instanceof TomcatEmbeddedContext) {
 			TomcatEmbeddedContext embeddedContext = (TomcatEmbeddedContext) context;
 			embeddedContext.setStarter(starter);
 			embeddedContext.setFailCtxIfServletStartFails(true);
 		}
+		/**
+		 * 这个相当于在
+		 * META-INF/services/javax.servlet.ServletContainerInitializer
+		 * 配置了一个需要 servlet3.0启动调用的类
+		 * 启动后会调用
+		 * @see TomcatStarter#onStartup(Set, ServletContext)
+		 *
+		 * @see TomcatEmbeddedContext#addServletContainerInitializer(ServletContainerInitializer, Set)
+		 */
 		context.addServletContainerInitializer(starter, NO_CLASSES);
 		for (LifecycleListener lifecycleListener : this.contextLifecycleListeners) {
 			context.addLifecycleListener(lifecycleListener);

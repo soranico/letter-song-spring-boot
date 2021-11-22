@@ -26,6 +26,9 @@ import org.apache.coyote.UpgradeProtocol;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.util.Loader;
 import org.eclipse.jetty.webapp.WebAppContext;
+import org.springframework.beans.factory.support.DefaultListableBeanFactory;
+import org.springframework.boot.autoconfigure.web.embedded.EmbeddedWebServerFactoryCustomizerAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.embedded.TomcatWebServerFactoryCustomizer;
 import org.xnio.SslClientAuthMode;
 
 import org.springframework.beans.factory.ObjectProvider;
@@ -73,7 +76,20 @@ class ServletWebServerFactoryConfiguration {
 				ObjectProvider<TomcatConnectorCustomizer> connectorCustomizers,
 				ObjectProvider<TomcatContextCustomizer> contextCustomizers,
 				ObjectProvider<TomcatProtocolHandlerCustomizer<?>> protocolHandlerCustomizers) {
+			/**
+			 * 在解析依赖的时候
+			 * @see DefaultListableBeanFactory#resolveDependency(org.springframework.beans.factory.config.DependencyDescriptor, java.lang.String, java.util.Set, org.springframework.beans.TypeConverter)
+			 * 默认返回这个类型
+			 * @see DefaultListableBeanFactory.DependencyObjectProvider
+			 */
 			TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory();
+			/**
+			 * 这个相当于依赖暂时替换
+			 * 使用的时候从
+			 * @see ObjectProvider#getObject()
+			 * 获取真正的依赖bean
+			 * @see EmbeddedWebServerFactoryCustomizerAutoConfiguration.TomcatWebServerFactoryCustomizerConfiguration#tomcatWebServerFactoryCustomizer(org.springframework.core.env.Environment, org.springframework.boot.autoconfigure.web.ServerProperties)
+			 */
 			factory.getTomcatConnectorCustomizers()
 					.addAll(connectorCustomizers.orderedStream().collect(Collectors.toList()));
 			factory.getTomcatContextCustomizers()
