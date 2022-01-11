@@ -1,9 +1,11 @@
 package com.kano.tomcat;
 
+import com.kano.tomcat.condition.KanoConditionOnBean;
 import com.kano.tomcat.config.KanoConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.AutoConfigurationImportSelector;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Import;
 
 @Import(KanoConfig.class)
@@ -17,6 +19,13 @@ public class TomcatApp {
 	 * @see AutoConfigurationImportSelector.AutoConfigurationGroup#selectImports()
 	 */
 	public static void main(String[] args) {
-		SpringApplication.run(TomcatApp.class,args);
+//		System.setProperty(EnableAutoConfiguration.ENABLED_OVERRIDE_PROPERTY,"false");
+		ConfigurableApplicationContext run = SpringApplication.run(TomcatApp.class, args);
+		run.getBean(KanoConditionOnBean.class);
 	}
+
+//	@Bean
+//	public Kano kano(){
+//		return new Kano();
+//	}
 }
